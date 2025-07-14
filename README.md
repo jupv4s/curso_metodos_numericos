@@ -1,3 +1,4 @@
+```text
 % --------------------------------------------------------------
 % Proyecto: Aprendiendo C++
 % Autor: Julio Pérez V.
