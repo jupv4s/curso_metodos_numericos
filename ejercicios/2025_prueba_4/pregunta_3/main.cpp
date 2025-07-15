@@ -4,7 +4,6 @@
 #include <cmath>    // Para exp, sqrt, abs
 #include <iomanip>  // Para setw, setprecision, left, fixed
 
-// Se usa para no tener que escribir std:: antes de cada comando
 using namespace std;
 
 int main()
@@ -28,14 +27,14 @@ int main()
     // Bucle para iterar x de 0 a 5 y calcular la integral
     for (double x = 0.0; x <= 5.0; x += 0.1)
     {
-        // La función a integrar, definida de forma compacta como una lambda
+         // La función a integrar es: f(t) = exp(x*t/2) * sqrt(1 - t^2)
         auto integrand = [x](double t)
         {
             if (abs(t) >= 1.0) return 0.0;
             return exp(x * t / 2.0) * sqrt(1.0 - t * t);
         };
 
-        // Calcular el resultado usando el método de Romberg
+        // Calculamos el resultado usando el método de Romberg
         double result = integrator.Romberg(integrand, 10);
         
         archivo_salida << left 
@@ -45,7 +44,7 @@ int main()
     
     archivo_salida.close();
 
-    cout << "✅ Resultados exportados correctamente a 'resultados.csv'." << endl;
+    cout << "Resultados exportados correctamente a 'resultados.csv'." << endl;
 
     return 0;
 }

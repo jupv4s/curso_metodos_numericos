@@ -1,4 +1,4 @@
-#ifndef MATRIX_H
+#ifndef MATRIX_H // Se mantiene el nombre del include guard, asumiendo que el archivo se llamará Matrix.h
 #define MATRIX_H
 
 #include <iostream>    // Para std::ostream, std::cerr, std::endl
@@ -11,11 +11,17 @@
 #include <limits>      // Para std::numeric_limits (útil para epsilon si T es float/double)
 #include <type_traits> // Para std::is_floating_point_v
 
+// No usar 'using namespace std;' en archivos de encabezado.
+
+// Variable global para el conteo de intercambios de filas en Gauss para el determinante.
+// Nota: Para una plantilla, una variable global template-dependiente es compleja.
+// Una alternativa es pasar el contador como referencia en 'gauss' y 'determinante'.
+// Sin embargo, si 'gauss' se llama independientemente, esta es una forma simple.
 int contador_gauss = 0;
 
 /* --- Declaración de la clase Matrix --- */
 template <class T>
-class Matrix
+class Matrix // ¡Clase renombrada a 'Matrix'!
 {
 private:
     std::vector<std::vector<T>> data; // Almacenamiento interno de los elementos de la matriz.
@@ -26,11 +32,11 @@ public:
     ~Matrix();                                         // Destructor
     Matrix(int rows, int cols);                        // Crea una matriz vacía de dimensiones especificadas
     Matrix(const Matrix<T> & other);                   // Constructor de copia para duplicar una matriz existente
-    Matrix(std::vector<std::vector<T>> elements);      // Inicializa la matriz con un vector de vectores
+    Matrix(std::vector<std::vector<T>> elements);     // Inicializa la matriz con un vector de vectores
     Matrix(int n);                                     // Crea una matriz identidad cuadrada de tamaño n x n
 
     // --- Operadores de Acceso y Asignación ---
-    Matrix<T> operator = (const Matrix<T> & other);    // Asigna los contenidos de otra matriz
+    Matrix<T> operator = (const Matrix<T> & other);   // Asigna los contenidos de otra matriz
     T operator()(int r, int c) const;                  // Acceso de solo lectura a un elemento (matriz[r][c])
     T & operator()(int r, int c);                      // Acceso de lectura/escritura a un elemento (matriz[r][c])
 
@@ -72,9 +78,7 @@ public:
                     } else {
                         os << x[i][j];
                     }
-                }
-                else
-                { // Para tipos no flotantes, imprime directamente
+                } else { // Para tipos no flotantes, imprime directamente
                     os << x[i][j];
                 }
 
@@ -95,8 +99,7 @@ public:
 
 // Operador de Flujo para vector<T> (sigue siendo global, no necesita ser friend de Matrix)
 template <class T>
-std::ostream & operator << (std::ostream & os, const std::vector<T> & v)
-{
+std::ostream & operator << (std::ostream & os, const std::vector<T> & v) {
     os << "[";
     for(std::size_t i = 0; i < v.size(); ++i) { // Usar std::size_t
         os << v[i];
@@ -120,8 +123,7 @@ template <class T>
 Matrix<T>::Matrix(int rows, int cols) // Referencia a 'Matrix<T>'
 {
     data.resize(rows);
-    for (int i = 0; i < rows; ++i)
-    {
+    for (int i = 0; i < rows; ++i) {
         data[i].resize(cols, T()); // Inicializa con el valor por defecto de T (0 para numéricos)
     }
 }
@@ -211,23 +213,17 @@ void Matrix<T>::save(std::string filePath) // Referencia a 'Matrix<T>'
 {
     std::ofstream myfile;
     myfile.open(filePath);
-
-    if (!myfile.is_open())
-    {
+    if (!myfile.is_open()) {
         std::cerr << "Error: No se pudo abrir el archivo '" << filePath << "' para guardar la matriz." << std::endl;
         return;
     }
-
     for(std::size_t i = 0; i < data.size(); i++) // Usar std::size_t
     {
         for (std::size_t j = 0; j < data[i].size(); j++) // Usar std::size_t
         {
-            if constexpr (std::is_floating_point_v<T>)
-            {
+            if constexpr (std::is_floating_point_v<T>) {
                 myfile << std::fixed << std::setw(11) << std::setprecision(6) << data[i][j];
-            }
-            else
-            {
+            } else {
                 myfile << data[i][j];
             }
 
@@ -327,8 +323,7 @@ Matrix<T> operator * (const Matrix<T> & a1, const Matrix<T> & b1) // Referencia 
 }
 
 template <class T>
-std::vector<T> operator + (const std::vector<T> & v1, const std::vector<T> & v2)
-{
+std::vector<T> operator + (const std::vector<T> & v1, const std::vector<T> & v2) {
     assert(v1.size() == v2.size());
     std::vector<T> res(v1.size());
     for(std::size_t i = 0; i < v1.size(); ++i) { // Usar std::size_t

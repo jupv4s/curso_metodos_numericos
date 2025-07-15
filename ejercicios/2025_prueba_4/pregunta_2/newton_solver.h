@@ -10,8 +10,6 @@
 
 #include "Matrix.h"
 
-//int contador_gauss = 0;
-
 template <typename T>
 class NewtonSolver
 {
