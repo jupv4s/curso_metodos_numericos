@@ -1,0 +1,209 @@
+#include <iostream>
+#include <fstream>
+#include <type_traits>
+#include "Rational.h"
+#include "Complex.h"
+#include "Dual.h"
+
+// Función f(z) = (z^3 - 3) / (z^5 - z^3 - 5)
+template <class T>
+T f(const T& z)
+{
+    T z3 = z * z * z;
+    T z5 = z3 * z * z;
+    
+    // Crear constantes usando los constructores apropiados
+    T three, five;
+    
+    // Para Complex<double>
+    if constexpr (std::is_same_v<T, Complex<double>>) {
+        three = T(3.0);
+        five = T(5.0);
+    }
+    // Para Complex<Rational<long long>>
+    else if constexpr (std::is_same_v<T, Complex<Rational<long long>>>) {
+        three = T(Rational<long long>(3));
+        five = T(Rational<long long>(5));
+    }
+    // Para Dual<Complex<double>, 4>
+    else if constexpr (std::is_same_v<T, Dual<Complex<double>, 4>>) {
+        three = T(Complex<double>(3.0));
+        five = T(Complex<double>(5.0));
+    }
+    // Para Dual<Complex<Rational<long long>>, 4> (caso adicional)
+    else if constexpr (std::is_same_v<T, Dual<Complex<Rational<long long>>, 4>>) {
+        three = T(Complex<Rational<long long>>(Rational<long long>(3)));
+        five = T(Complex<Rational<long long>>(Rational<long long>(5)));
+    }
+    // Para otros tipos (fallback)
+    else {
+        three = T(3);
+        five = T(5);
+    }
+    
+    return (z3 - three) / (z5 - z3 - five);
+}
+
+// Función auxiliar para mostrar la expansión de Taylor de forma más clara
+template <class T, size_t N>
+void mostrar_taylor(const Dual<T, N>& result, const std::string& punto = "i") {
+    std::cout << "f(z) ≈ " << result[0] << std::endl;
+    
+    if (N > 1) {
+        std::cout << "     + (" << result[1] << ")(z - " << punto << ")" << std::endl;
+    }
+    if (N > 2) {
+        std::cout << "     + (" << result[2] << ")(z - " << punto << ")^2" << std::endl;
+    }
+    if (N > 3) {
+        std::cout << "     + (" << result[3] << ")(z - " << punto << ")^3" << std::endl;
+    }
+    if (N > 4) {
+        for (size_t i = 4; i < N; ++i) {
+            std::cout << "     + (" << result[i] << ")(z - " << punto << ")^" << i << std::endl;
+        }
+    }
+}
+
+int main() {
+    std::cout << "=== ANÁLISIS DE f(z) = (z^3 - 3) / (z^5 - z^3 - 5) ===" << std::endl;
+    
+    // Definir alias para mayor claridad
+    using Cxd = Complex<double>;
+    using DualCxd = Dual<Cxd, 4>;
+    using Rat = Rational<long long>;
+    using Cxr = Complex<Rat>;
+    using DualCxr = Dual<Cxr, 4>;
+    
+    // ============================================
+    // Parte 1: Expansión de Taylor en z = i
+    // ============================================
+    std::cout << "\n=== PARTE 1: Expansión de Taylor en z = i ===" << std::endl;
+    
+    // z = i + ε para diferenciación automática
+    DualCxd z_dual(Cxd(0, 1), Cxd(1, 0));
+    DualCxd result_taylor = f(z_dual);
+    
+    mostrar_taylor(result_taylor);
+    
+    // Mostrar información adicional sobre las derivadas
+    std::cout << "\nDerivadas en z = i:" << std::endl;
+    std::cout << "f(i) = " << result_taylor[0] << std::endl;
+    std::cout << "f'(i) = " << result_taylor[1] << std::endl;
+    std::cout << "f''(i)/2! = " << result_taylor[2] << std::endl;
+    std::cout << "f'''(i)/3! = " << result_taylor[3] << std::endl;
+    
+    // ============================================
+    // Parte 2: Evaluación con racionales exactos
+    // ============================================
+    std::cout << "\n=== PARTE 2: Evaluación con racionales exactos ===" << std::endl;
+    
+    Cxr z1(Rat(1, 2), Rat(1, 1));  // 1/2 + i
+    Cxr z2(Rat(1, 1), Rat(1, 2));  // 1 + i/2
+    Cxr z3(Rat(2, 1), Rat(3, 2));  // 2 + 3i/2
+    
+    auto r1 = f(z1);
+    auto r2 = f(z2);
+    auto r3 = f(z3);
+    
+    std::cout << "f(1/2 + i) = " << r1 << std::endl;
+    std::cout << "f(1 + i/2) = " << r2 << std::endl;
+    std::cout << "f(2 + 3i/2) = " << r3 << std::endl;
+    
+    // ============================================
+    // Parte 3: Evaluación con punto flotante
+    // ============================================
+    std::cout << "\n=== PARTE 3: Evaluación con punto flotante ===" << std::endl;
+    
+    Cxd z4(0.5, 1.0);   // 0.5 + i
+    Cxd z5(1.0, 0.5);   // 1.0 + 0.5i
+    Cxd z6(2.0, 1.5);   // 2.0 + 1.5i
+    
+    auto r4 = f(z4);
+    auto r5 = f(z5);
+    auto r6 = f(z6);
+    
+    std::cout << "f(0.5 + i) = " << r4 << std::endl;
+    std::cout << "f(1.0 + 0.5i) = " << r5 << std::endl;
+    std::cout << "f(2.0 + 1.5i) = " << r6 << std::endl;
+    
+    // ============================================
+    // Parte 4: Comparación entre racionales y flotantes
+    // ============================================
+    std::cout << "\n=== PARTE 4: Comparación racionales vs flotantes ===" << std::endl;
+    
+    // Conversión de racionales a double para comparar
+    std::cout << "Comparación para z = 1/2 + i:" << std::endl;
+    std::cout << "  Racional: " << r1 << std::endl;
+    std::cout << "  Flotante: " << r4 << std::endl;
+    std::cout << "  Diferencia real: " << r1.real().to_double() - r4.real() << std::endl;
+    std::cout << "  Diferencia imag: " << r1.imag().to_double() - r4.imag() << std::endl;
+    
+    // ============================================
+    // Parte 5: Expansión de Taylor con racionales
+    // ============================================
+    std::cout << "\n=== PARTE 5: Expansión de Taylor con racionales exactos ===" << std::endl;
+    
+    // z = i + ε con racionales
+    DualCxr z_dual_rat(Cxr(Rat(0), Rat(1)), Cxr(Rat(1), Rat(0)));
+    DualCxr result_taylor_rat = f(z_dual_rat);
+    
+    mostrar_taylor(result_taylor_rat);
+    
+    // ============================================
+    // Parte 6: Guardar resultados en archivo
+    // ============================================
+    std::cout << "\n=== GUARDANDO RESULTADOS ===" << std::endl;
+    
+    std::ofstream file("resultados_completos.txt");
+    if (file) {
+        file << "=== ANÁLISIS DE f(z) = (z^3 - 3) / (z^5 - z^3 - 5) ===" << std::endl;
+        file << std::endl;
+        
+        file << "Expansión de Taylor en z = i (flotante):" << std::endl;
+        file << "f(z) ≈ " << result_taylor[0] << std::endl;
+        file << "     + (" << result_taylor[1] << ")(z - i)" << std::endl;
+        file << "     + (" << result_taylor[2] << ")(z - i)^2" << std::endl;
+        file << "     + (" << result_taylor[3] << ")(z - i)^3" << std::endl;
+        file << std::endl;
+        
+        file << "Expansión de Taylor en z = i (racional):" << std::endl;
+        file << "f(z) ≈ " << result_taylor_rat[0] << std::endl;
+        file << "     + (" << result_taylor_rat[1] << ")(z - i)" << std::endl;
+        file << "     + (" << result_taylor_rat[2] << ")(z - i)^2" << std::endl;
+        file << "     + (" << result_taylor_rat[3] << ")(z - i)^3" << std::endl;
+        file << std::endl;
+        
+        file << "Evaluaciones puntuales:" << std::endl;
+        file << "f(1/2 + i) = " << r1 << " (racional)" << std::endl;
+        file << "f(1 + i/2) = " << r2 << " (racional)" << std::endl;
+        file << "f(2 + 3i/2) = " << r3 << " (racional)" << std::endl;
+        file << std::endl;
+        file << "f(0.5 + i) = " << r4 << " (flotante)" << std::endl;
+        file << "f(1.0 + 0.5i) = " << r5 << " (flotante)" << std::endl;
+        file << "f(2.0 + 1.5i) = " << r6 << " (flotante)" << std::endl;
+        
+        file.close();
+        std::cout << "Resultados guardados en 'resultados_completos.txt'" << std::endl;
+    } else {
+        std::cout << "Error: No se pudo crear el archivo de resultados" << std::endl;
+    }
+    
+    // ============================================
+    // Parte 7: Información adicional
+    // ============================================
+    std::cout << "\n=== INFORMACIÓN ADICIONAL ===" << std::endl;
+    std::cout << "Función analizada: f(z) = (z^3 - 3) / (z^5 - z^3 - 5)" << std::endl;
+    std::cout << "Tipos utilizados:" << std::endl;
+    std::cout << "  - Complex<double>: números complejos con punto flotante" << std::endl;
+    std::cout << "  - Complex<Rational<long long>>: números complejos con fracciones exactas" << std::endl;
+    std::cout << "  - Dual<Complex<T>, 4>: diferenciación automática hasta orden 3" << std::endl;
+    std::cout << std::endl;
+    std::cout << "La diferenciación automática permite obtener:" << std::endl;
+    std::cout << "  - f(z₀): valor de la función" << std::endl;
+    std::cout << "  - f'(z₀): primera derivada" << std::endl;
+    std::cout << "  - f''(z₀)/2!: segunda derivada normalizada" << std::endl;
+    std::cout << "  - f'''(z₀)/3!: tercera derivada normalizada" << std::endl;
+    
+    return 0;
+}

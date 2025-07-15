@@ -16,22 +16,26 @@ T f(const T& z)
     T three, five;
     
     // Para Complex<double>
-    if constexpr (std::is_same_v<T, Complex<double>>) {
+    if constexpr (std::is_same_v<T, Complex<double>>)
+    {
         three = T(3.0);
         five = T(5.0);
     }
     // Para Complex<Rational<long long>>
-    else if constexpr (std::is_same_v<T, Complex<Rational<long long>>>) {
+    else if constexpr (std::is_same_v<T, Complex<Rational<long long>>>)
+    {
         three = T(Rational<long long>(3));
         five = T(Rational<long long>(5));
     }
     // Para Dual<Complex<double>, 4>
-    else if constexpr (std::is_same_v<T, Dual<Complex<double>, 4>>) {
+    else if constexpr (std::is_same_v<T, Dual<Complex<double>, 4>>)
+    {
         three = T(Complex<double>(3.0));
         five = T(Complex<double>(5.0));
     }
     // Para otros tipos
-    else {
+    else
+    {
         three = T(3);
         five = T(5);
     }
@@ -39,10 +43,12 @@ T f(const T& z)
     return (z3 - three) / (z5 - z3 - five);
 }
 
-int main() {
+int main()
+{
     // Parte 1: Expansión de Taylor en z = i
     std::cout << "=== Expansion de Taylor en z = i ===" << std::endl;
     
+    // Definimos aliases para los tipos
     using Cxd = Complex<double>;
     using DualCxd = Dual<Cxd, 4>;
     
