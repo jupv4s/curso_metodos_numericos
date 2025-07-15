@@ -2,7 +2,7 @@ SHELL = /bin/bash
 
 all:
 	@echo "Compiling..."
-	@time g++ -o main main.cpp OdeSolver.cpp
+	@time g++ -o main main.cpp
 
 run:
 	@echo "Running..."
@@ -10,7 +10,7 @@ run:
 
 plot:
 	@echo "Plotting..."
-	@time gnuplot main.gp
+	@time gnuplot plot.gp
 
 clean:
 	@rm -f main *.csv *.png

@@ -31,9 +31,9 @@ public:
     std::size_t size() const;
 
     // --- Propiedades matemáticas ---
-    T norm() const;                          // Norma (módulo)
-    Vector<T> normalized() const;           // Vector unitario
-    T dot(const Vector<T>& other) const;    // Producto escalar
+    T norm() const;                                // Norma (módulo)
+    Vector<T> normalized() const;                  // Vector unitario
+    T dot(const Vector<T>& other) const;           // Producto escalar
     Vector<T> cross(const Vector<T>& other) const; // Producto vectorial (solo R³)
 
     // --- Impresión ---

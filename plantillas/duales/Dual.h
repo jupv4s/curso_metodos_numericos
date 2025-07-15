@@ -4,163 +4,132 @@
 #include <iostream>
 #include <cmath>
 #include <cassert>
+#include <array>
 
-template <class T>
+// Plantilla para números duales generalizados (ε^n = 0)
+template <class T, size_t N = 5> // Por defecto para ε^5 = 0
 class Dual
 {
 private:
-    T re; // Parte real
-    T du; // Parte dual (coeficiente de ε)
+    std::array<T, N> parts; // Coeficientes para ε^0, ε^1, ..., ε^(N-1)
 
 public:
     // --- Constructores y destructor ---
-    Dual() : re(T()), du(T()) {}
-    Dual(T real, T dual = T()) : re(real), du(dual) {}
-    Dual(const Dual<T>& other) = default;
+    Dual() { parts.fill(T(0)); }
+    Dual(const T& scalar) {
+        parts.fill(T(0));
+        parts[0] = scalar;
+    }
+    // Constructor para inicializar las primeras partes (útil para 1ra derivada)
+    Dual(const T& c0, const T& c1) {
+        parts.fill(T(0));
+        parts[0] = c0;
+        parts[1] = c1;
+    }
+    Dual(const Dual<T, N>& other) = default;
     ~Dual() = default;
 
     // --- Asignación ---
-    Dual<T>& operator=(const Dual<T>& other) = default;
+    Dual<T, N>& operator=(const Dual<T, N>& other) = default;
 
     // --- Accesores ---
-    T real() const { return re; }
-    T dual() const { return du; }
-    void real(T r) { re = r; }
-    void dual(T d) { du = d; }
+    // Acceso general a cualquier coeficiente
+    const T& operator[](size_t i) const { return parts[i]; }
+    T& operator[](size_t i) { return parts[i]; }
 
-    // --- Operadores aritméticos internos ---
-    Dual<T> operator+(const Dual<T>& other) const
-    {
-        return Dual<T>(re + other.re, du + other.du);
+    // Accesores convenientes para compatibilidad (1er orden)
+    T real() const { return parts[0]; }
+    T dual() const { return parts[1]; }
+    void real(T r) { parts[0] = r; }
+    void dual(T d) { parts[1] = d; }
+
+    // --- Operador unario ---
+    Dual<T, N> operator-() const {
+        Dual<T, N> result;
+        for (size_t i = 0; i < N; ++i) {
+            result[i] = -parts[i];
+        }
+        return result;
     }
-
-    Dual<T> operator-(const Dual<T>& other) const
-    {
-        return Dual<T>(re - other.re, du - other.du);
-    }
-
-    Dual<T> operator*(const Dual<T>& other) const
-    {
-        return Dual<T>(
-            re * other.re,
-            re * other.du + du * other.re
-        );
-    }
-
-    Dual<T> operator/(const Dual<T>& other) const
-    {
-        assert(other.re != T() && "Error: división por parte real nula.");
-        T denom = other.re * other.re;
-        return Dual<T>(
-            re / other.re,
-            (du * other.re - re * other.du) / denom
-        );
-    }
-
-    Dual<T> operator-() const
-    {
-        return Dual<T>(-re, -du);
-    }
-
-    // --- Funciones útiles ---
-    Dual<T> conj() const { return Dual<T>(re, -du); }
 };
 
 // --- Operadores aritméticos externos ---
 
-template <class T>
-Dual<T> operator+(const Dual<T>& a, const Dual<T>& b) { return a + b; }
-
-template <class T>
-Dual<T> operator-(const Dual<T>& a, const Dual<T>& b) { return a - b; }
-
-template <class T>
-Dual<T> operator*(const Dual<T>& a, const Dual<T>& b) { return a * b; }
-
-template <class T>
-Dual<T> operator*(T scalar, const Dual<T>& d) { return Dual<T>(scalar * d.real(), scalar * d.dual()); }
-
-template <class T>
-Dual<T> operator*(const Dual<T>& d, T scalar) { return scalar * d; }
-
-template <class T>
-Dual<T> operator/(const Dual<T>& a, const Dual<T>& b) { return a / b; }
-
-// --- Comparación ---
-
-template <class T>
-bool operator==(const Dual<T>& a, const Dual<T>& b)
-{
-    return a.real() == b.real() && a.dual() == b.dual();
+template <class T, size_t N>
+Dual<T, N> operator+(const Dual<T, N>& a, const Dual<T, N>& b) {
+    Dual<T, N> result;
+    for (size_t i = 0; i < N; ++i) {
+        result[i] = a[i] + b[i];
+    }
+    return result;
 }
 
-template <class T>
-bool operator!=(const Dual<T>& a, const Dual<T>& b)
-{
-    return !(a == b);
+template <class T, size_t N>
+Dual<T, N> operator-(const Dual<T, N>& a, const Dual<T, N>& b) {
+    Dual<T, N> result;
+    for (size_t i = 0; i < N; ++i) {
+        result[i] = a[i] - b[i];
+    }
+    return result;
 }
 
-// --- Funciones matemáticas comunes ---
-
-template <class T>
-Dual<T> sin(const Dual<T>& d)
-{
-    return Dual<T>(std::sin(d.real()), std::cos(d.real()) * d.dual());
+template <class T, size_t N>
+Dual<T, N> operator*(const Dual<T, N>& a, const Dual<T, N>& b) {
+    Dual<T, N> result;
+    for (size_t k = 0; k < N; ++k) {
+        T sum = T(0);
+        for (size_t i = 0; i <= k; ++i) {
+            sum += a[i] * b[k - i];
+        }
+        result[k] = sum;
+    }
+    return result;
 }
 
-template <class T>
-Dual<T> cos(const Dual<T>& d)
-{
-    return Dual<T>(std::cos(d.real()), -std::sin(d.real()) * d.dual());
+template <class T, size_t N>
+Dual<T, N> operator/(const Dual<T, N>& a, const Dual<T, N>& b) {
+    assert(b[0] != T(0) && "Error: división por parte real nula.");
+    Dual<T, N> result;
+    result[0] = a[0] / b[0];
+    for (size_t k = 1; k < N; ++k) {
+        T sum = T(0);
+        for (size_t i = 0; i < k; ++i) {
+            sum += result[i] * b[k - i];
+        }
+        result[k] = (a[k] - sum) / b[0];
+    }
+    return result;
 }
 
-template <class T>
-Dual<T> tan(const Dual<T>& d)
-{
-    T cos_r = std::cos(d.real());
-    return Dual<T>(std::tan(d.real()), d.dual() / (cos_r * cos_r));
+// --- Operaciones con escalares ---
+template <class T, size_t N>
+Dual<T, N> operator*(const T& scalar, const Dual<T, N>& d) {
+    return Dual<T, N>(scalar) * d;
 }
 
-template <class T>
-Dual<T> exp(const Dual<T>& d)
-{
-    T exp_r = std::exp(d.real());
-    return Dual<T>(exp_r, exp_r * d.dual());
+template <class T, size_t N>
+Dual<T, N> operator*(const Dual<T, N>& d, const T& scalar) {
+    return d * Dual<T, N>(scalar);
 }
 
-template <class T>
-Dual<T> log(const Dual<T>& d)
-{
-    assert(d.real() > T() && "Error: log indefinido para valores no positivos.");
-    return Dual<T>(std::log(d.real()), d.dual() / d.real());
+template <class T, size_t N>
+Dual<T, N> operator+(const T& scalar, const Dual<T, N>& d) {
+    return Dual<T, N>(scalar) + d;
 }
 
-template <class T>
-Dual<T> sqrt(const Dual<T>& d)
-{
-    assert(d.real() >= T() && "Error: raíz cuadrada indefinida para valores negativos.");
-    T root = std::sqrt(d.real());
-    return Dual<T>(root, d.dual() / (2 * root));
+template <class T, size_t N>
+Dual<T, N> operator+(const Dual<T, N>& d, const T& scalar) {
+    return d + Dual<T, N>(scalar);
 }
 
 // --- Impresión ---
-
-template <class T>
-std::ostream& operator<<(std::ostream& os, const Dual<T>& d)
-{
-    os << d.real() << " + " << d.dual() << "ε";
+template <class T, size_t N>
+std::ostream& operator<<(std::ostream& os, const Dual<T, N>& d) {
+    os << d[0];
+    for (size_t i = 1; i < N; ++i) {
+        os << " + " << d[i] << "e^" << i;
+    }
     return os;
 }
-
-// --- Funciones libres estilo STL ---
-
-template <class T>
-T real(const Dual<T>& d) { return d.real(); }
-
-template <class T>
-T dual(const Dual<T>& d) { return d.dual(); }
-
-template <class T>
-Dual<T> conj(const Dual<T>& d) { return d.conj(); }
 
 #endif
