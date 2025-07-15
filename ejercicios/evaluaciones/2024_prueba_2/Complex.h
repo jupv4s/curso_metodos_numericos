@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cmath>
 #include <sstream>
-#include <stdexcept> // Necesario para std::invalid_argument
 
 // Clase plantilla para números complejos
 template <class T>
@@ -95,6 +94,8 @@ Complex<T> operator*(const Complex<T>& a, const Complex<T>& b)
     return Complex<T>(re, im);
 }
 
+// --- INICIO DE LA SECCIÓN CORREGIDA ---
+// Operadores de multiplicación por un escalar (double, float, int, etc.)
 template <class T>
 Complex<T> operator*(const T& scalar, const Complex<T>& c)
 {
@@ -104,25 +105,24 @@ Complex<T> operator*(const T& scalar, const Complex<T>& c)
 template <class T>
 Complex<T> operator*(const Complex<T>& c, const T& scalar)
 {
+    // Reutilizamos el operador anterior para no repetir código
     return scalar * c;
 }
+// --- FIN DE LA SECCIÓN CORREGIDA ---
 
-// --- INICIO DE LA SECCIÓN CORREGIDA ---
 template <class T>
 Complex<T> operator/(const Complex<T>& a, const Complex<T>& b)
 {
     T denom = b.real() * b.real() + b.imag() * b.imag();
-    // Se compara con T(0) para que funcione con Rational y con tipos nativos
-    if (denom == T(0)) {
-        // Se lanza una excepción en lugar de retornar NAN,
-        // lo cual es más genérico y robusto.
-        throw std::invalid_argument("Division por un numero complejo cero.");
+    if (denom == 0) {
+        // Manejo de error para evitar división por cero
+        // Podrías lanzar una excepción aquí si lo prefieres
+        return Complex<T>(NAN, NAN);
     }
     T re = (a.real() * b.real() + a.imag() * b.imag()) / denom;
     T im = (a.imag() * b.real() - a.real() * b.imag()) / denom;
     return Complex<T>(re, im);
 }
-// --- FIN DE LA SECCIÓN CORREGIDA ---
 
 // Operadores de comparación
 template <class T>

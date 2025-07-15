@@ -1,0 +1,22 @@
+Resultados del cálculo de fuerzas:
+-----------------------------------------
+Partícula en z = (1, 1) (q = 1)
+  -> W'(z) = (2, 2)
+  -> E(z) = Ex-iEy = (-2, -2)
+  -> Fuerza F(z) = Fx+iFy = (-2, 2)
+
+Partícula en z = (-1, 1) (q = -2)
+  -> W'(z) = (-2, 2)
+  -> E(z) = Ex-iEy = (2, -2)
+  -> Fuerza F(z) = Fx+iFy = (-4, -4)
+
+Partícula en z = (-1, -1) (q = 3)
+  -> W'(z) = (-2, -2)
+  -> E(z) = Ex-iEy = (2, 2)
+  -> Fuerza F(z) = Fx+iFy = (6, -6)
+
+Partícula en z = (1, -1) (q = -4)
+  -> W'(z) = (2, -2)
+  -> E(z) = Ex-iEy = (-2, 2)
+  -> Fuerza F(z) = Fx+iFy = (8, 8)
+
