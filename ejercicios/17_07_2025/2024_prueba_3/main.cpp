@@ -18,7 +18,8 @@ double atan2_safe(double y, double x) {
 }
 
 // Define las ecuaciones diferenciales del sistema. Vector de estado s: [x, y, vx, vy]
-vector<double> ecuaciones_movimiento(double t, const vector<double>& s) {
+vector<double> ecuaciones_movimiento(double t, const vector<double>& s)
+{
     double x = s[0], y = s[1], vx = s[2], vy = s[3];
     
     double r2 = x * x + y * y;
