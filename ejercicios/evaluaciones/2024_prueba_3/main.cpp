@@ -1,131 +1,129 @@
-#include "integrator.h"
-#include "interpolator.h"
 #include <iostream>
-#include <cmath>
 #include <vector>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <numeric>
+#include "rk_4.h"
+#include "spline.h"
 
-// --- Definición del sistema físico ---
+using namespace std;
 
+// Constantes del problema
 const double g = -0.0001;
 
-// Función que define el sistema de EDOs de primer orden
-// dy/dt = f(t, y) donde y = [x, y, vx, vy]
-State system_derivatives(double t, const State& y) {
-    double x = y[0];
-    double y_pos = y[1];
-    double vx = y[2];
-    double vy = y[3];
+// Función para calcular atan2 de forma segura, evitando el caso (0,0)
+double atan2_safe(double y, double x) {
+    if (x == 0.0 && y == 0.0) return 0.0;
+    return atan2(y, x);
+}
 
-    double r2 = x * x + y_pos * y_pos;
-    if (r2 < 1e-12) { // Evitar división por cero
-        return {vx, vy, 0.0, g};
-    }
+// Define las ecuaciones diferenciales del sistema. Vector de estado s: [x, y, vx, vy]
+vector<double> ecuaciones_movimiento(double t, const vector<double>& s) {
+    double x = s[0], y = s[1], vx = s[2], vy = s[3];
     
-    double theta = std::atan2(y_pos, x);
+    double r2 = x * x + y * y;
+    if (r2 < 1e-15) return {vx, vy, 0.0, g}; // Evitar división por cero en el origen
     
-    double cos_3theta = std::cos(3 * theta);
-    double sin_3theta = std::sin(3 * theta);
-
-    double cosh_arg = 50.0 * (r2 - 0.5 * sin_3theta - 1.0);
-    double cosh_val = std::cosh(cosh_arg);
-    double denom_cosh = cosh_val * cosh_val;
+    double theta = atan2_safe(y, x);
     
-    double factor_comun = -2500.0 / denom_cosh;
+    // Factor de fuerza dependiente de la posición
+    double cosh_arg = 50.0 * (r2 - 0.5 * sin(3.0 * theta) - 1.0);
+    double force_factor = 1.0 / pow(cosh(cosh_arg), 2);
     
-    double Fx = factor_comun * (2.0 * x + (3.0 * y_pos * cos_3theta) / (2.0 * r2));
-    double Fy = factor_comun * (2.0 * y_pos - (3.0 * x * cos_3theta) / (2.0 * r2)) + g;
+    // Componentes de la fuerza
+    double Fx = -2500.0 * (2.0 * x + 1.5 * y * cos(3.0 * theta) / r2) * force_factor;
+    double Fy = -2500.0 * (2.0 * y + 1.5 * x * cos(3.0 * theta) / r2) * force_factor + g;
     
-    // m=1, entonces a = F
     return {vx, vy, Fx, Fy};
 }
 
-// --- Función principal ---
+// Calcula y guarda la energía cinética a partir de la trayectoria
+void procesar_energia(const string& in_file, const string& out_file) {
+    ifstream input(in_file);
+    ofstream output(out_file);
+    output << "# t\tEcinetica\n" << scientific << setprecision(10);
+    
+    string header;
+    getline(input, header); // Saltar cabecera
+    
+    double t, x, y, vx, vy;
+    while (input >> t >> x >> y >> vx >> vy) {
+        output << t << "\t" << 0.5 * (vx * vx + vy * vy) << "\n";
+    }
+}
+
+// Realiza submuestreo, filtrado e interpolación con splines
+void procesar_submuestreo(const string& in_file, const string& out_file) {
+    ifstream input(in_file);
+    string header;
+    getline(input, header);
+
+    // 1. Leer todos los datos de la trayectoria
+    vector<vector<double>> data(5);
+    // [0] → tiempo
+    // [1] → x
+    // [2] → y
+    // [3] → vx
+    // [4] → vy
+    double t, x, y, vx, vy;
+    while (input >> t >> x >> y >> vx >> vy)
+    {
+        data[0].push_back(t); data[1].push_back(x); data[2].push_back(y);
+        data[3].push_back(vx); data[4].push_back(vy);
+    }
+
+    // 2. Tomar el 1% de los puntos (submuestreo)
+    int total_puntos = data[0].size();
+    int puntos_sub = max(10, total_puntos / 100);
+    int salto = total_puntos / puntos_sub;
+    vector<vector<double>> sub_data(5);
+    for (int i = 0; i < puntos_sub && i * salto < total_puntos; ++i) {
+        for(int j=0; j<5; ++j) sub_data[j].push_back(data[j][i * salto]);
+    }
+
+    // 3. Conservar solo puntos con índice par (2k) para la interpolación
+    vector<vector<double>> pares_data(5);
+    for (int i = 0; i < sub_data[0].size(); i += 2) {
+        for(int j=0; j<5; ++j) pares_data[j].push_back(sub_data[j][i]);
+    }
+
+    // 4. Crear splines y escribir resultados
+    // sx: spline para x(t)
+    // sy: spline para y(t)
+    // svx: spline para vx(t) [no se usa en la salida]
+    // svy: spline para vy(t) [no se usa en la salida]
+    Spline sx(pares_data[0], pares_data[1]), sy(pares_data[0], pares_data[2]);
+    Spline svx(pares_data[0], pares_data[3]), svy(pares_data[0], pares_data[4]);
+    
+    ofstream output(out_file);
+    output << "# t\tx_orig\ty_orig\tvx_orig\tvy_orig\tx_interp\ty_interp\n";
+    for (size_t i = 0; i < sub_data[0].size(); ++i) {
+        double t_i = sub_data[0][i];
+        output << t_i << "\t" << sub_data[1][i] << "\t" << sub_data[2][i] << "\t" << sub_data[3][i] << "\t" << sub_data[4][i]
+               << "\t" << sx.evaluar(t_i) << "\t" << sy.evaluar(t_i) << "\n";
+    }
+}
+
 int main() {
-    // --- 1. Configuración de la simulación ---
-    State y0 = {0.1, 0.0, 0.01, 0.01}; // [x, y, vx, vy]
-    double t_start = 0.0;
-    double t_end = 5000.0;
-    double dt_initial = 0.001;
-    double tolerance = 1e-15;
-
-    // --- 2. Ejecución de la simulación ---
-    AdaptiveIntegrator integrator(system_derivatives, tolerance);
-    integrator.integrate(y0, t_start, t_end, dt_initial);
+    // Condiciones iniciales: [x, y, vx, vy]
+    vector<double> estado_inicial = {0.1, 0.0, 0.01, 0.01};
     
-    // --- 3. Experimento de interpolación ---
-    std::cout << "\nIniciando experimento de interpolación...\n";
+    // Integrar la trayectoria usando RK4 adaptativo
+    rk4 integrador(ecuaciones_movimiento);
 
-    // Leer los datos del archivo generado
-    std::vector<double> t_vec, x_vec, y_vec;
-    std::ifstream infile("trajectory.csv");
-    std::string line;
-    std::getline(infile, line); // Omitir cabecera
-    while (std::getline(infile, line)) {
-        double t, x, y, vx, vy, ke;
-        char comma;
-        std::stringstream ss(line);
-        ss >> t >> comma >> x >> comma >> y >> comma >> vx >> comma >> vy >> comma >> ke;
-        t_vec.push_back(t);
-        x_vec.push_back(x);
-        y_vec.push_back(y);
-    }
-    infile.close();
+    // Parámetros de integración (puedes cambiarlos a tu gusto)
+    double t_inicial = 0.0;
+    double t_final = 500.0;   // cambiar a 5000.0 para una simulación más larga
+    double h_inicial = 0.001;
+    double tolerancia = 1e-9; // cambiar a 1e-15 para mayor precisión
+    string archivo_trayectoria = "trayectoria.dat";
+    integrador.integrar_adaptativo(estado_inicial, t_inicial, t_final, h_inicial, tolerancia, archivo_trayectoria);
 
-    // Tomar el 1% de la trayectoria
-    int n_total = t_vec.size();
-    int n_slice = static_cast<int>(n_total * 0.01);
+    // Procesar los datos generados
+    procesar_energia(archivo_trayectoria, "energia_cinetica.dat");
+    procesar_submuestreo(archivo_trayectoria, "interpolacion.dat");
+
+    cout << "Simulación completada. Archivos generados: " << archivo_trayectoria << ", energia_cinetica.dat, interpolacion.dat" << endl;
     
-    // Submuestrear: conservar solo puntos pares
-    std::vector<double> t_data, x_data, y_data;
-    std::vector<double> t_removed, x_real, y_real;
-
-    for(int i = 0; i < n_slice; ++i) {
-        if (i % 2 == 0) {
-            t_data.push_back(t_vec[i]);
-            x_data.push_back(x_vec[i]);
-            y_data.push_back(y_vec[i]);
-        } else {
-            t_removed.push_back(t_vec[i]);
-            x_real.push_back(x_vec[i]);
-            y_real.push_back(y_vec[i]);
-        }
-    }
-
-    std::cout << "Puntos en la muestra del 1%: " << n_slice << std::endl;
-    std::cout << "Puntos usados para interpolar (nodos): " << t_data.size() << std::endl;
-    std::cout << "Puntos a restaurar: " << t_removed.size() << std::endl;
-
-    // Crear interpoladores Spline
-    CubicSplineInterpolator spline_x(t_data, x_data);
-    CubicSplineInterpolator spline_y(t_data, y_data);
-
-    // Restaurar los puntos y calcular error
-    std::ofstream interp_file("interpolation_results.csv");
-    interp_file << "t_removed,x_real,y_real,x_restored,y_restored\n";
-    
-    double total_error_sq = 0.0;
-
-    for (size_t i = 0; i < t_removed.size(); ++i) {
-        double x_restored = spline_x.interpolate(t_removed[i]);
-        double y_restored = spline_y.interpolate(t_removed[i]);
-
-        double err_x = x_restored - x_real[i];
-        double err_y = y_restored - y_real[i];
-        total_error_sq += err_x*err_x + err_y*err_y;
-
-        interp_file << std::fixed << std::setprecision(10) 
-                    << t_removed[i] << "," << x_real[i] << "," << y_real[i] << ","
-                    << x_restored << "," << y_restored << "\n";
-    }
-    interp_file.close();
-
-    double total_error = std::sqrt(total_error_sq);
-    std::cout << "Experimento de interpolación completado." << std::endl;
-    std::cout << "Error Euclidiano total en la restauración: " << std::scientific << total_error << std::endl;
-    std::cout << "Resultados guardados en interpolation_results.csv\n";
-
     return 0;
 }

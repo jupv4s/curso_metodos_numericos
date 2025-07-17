@@ -2,7 +2,7 @@ SHELL = /bin/bash
 
 all:
 	@echo "Compiling..."
-	@time g++ -o main main.cpp integrator.cpp interpolator.cpp
+	@time g++ -o main main.cpp rk_4.cpp spline.cpp
 
 run:
 	@echo "Running..."
@@ -10,7 +10,7 @@ run:
 
 plot:
 	@echo "Plotting..."
-	@time gnuplot plot.py
+	@time python3 plot.py
 
 clean:
-	@rm -f main *.csv *.png
+	@rm -f main *.dat *.png
