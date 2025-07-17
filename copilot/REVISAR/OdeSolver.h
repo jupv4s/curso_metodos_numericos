@@ -1,4 +1,4 @@
-#ifndef ODESOLVER_H // Se mantiene el include guard original por compatibilidad
+#ifndef ODESOLVER_H
 #define ODESOLVER_H
 
 #include "Vector.h"
@@ -37,4 +37,4 @@ public:
     void PEFRL(Vector<double> Y_initial, std::string archivo);
 };
 
-#endif // ODESOLVER_H
+#endif
