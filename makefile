@@ -13,4 +13,4 @@ plot:
 	@time gnuplot plot.gp
 
 clean:
-	@rm -f main *.csv *.png
+	@rm -f main *.dat *.png
