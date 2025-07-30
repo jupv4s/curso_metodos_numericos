@@ -42,5 +42,20 @@ int main()
 
     cout << "T^2 = " << cts_ajuste[1] << "*L + " << cts_ajuste[0] << endl;
 
+    cout << endl;
+    cout << "Aplicando un ajuste cuadratico a los datos se obtiene:" << endl << endl;
+
+    vector<double> cts_cuad = A_1.cuadratica();
+
+    cout << "---------------------------------" << endl;
+    cout << "Coeficiente cuadratico: " << cts_cuad[2] << endl;
+    cout << "Coeficiente lineal: "     << cts_cuad[1] << endl;
+    cout << "Intercepto: "            << cts_cuad[0] << endl;
+    cout << "---------------------------------" << endl;
+
+    cout << "T^2 = " << cts_cuad[2] << "*L^2 + "
+         << cts_cuad[1] << "*L + "
+         << cts_cuad[0] << endl;
+
     return 0;
 }
