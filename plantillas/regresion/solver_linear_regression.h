@@ -25,6 +25,10 @@ private:
     // Retorna un vector de coeficientes, o vacío en caso de error.
     std::vector<double> calculate_linear_regression_coefficients();
 
+    // Método privado para calcular la regresión cuadrática (y = a*x^2 + b*x + c)
+    // Soporta datasets de dos columnas: {x, y}
+    std::vector<double> calculate_quadratic_regression_coefficients();
+
     // Método privado que orquesta el cálculo de la regresión según el tipo.
     // Se llama desde el constructor.
     void perform_regression_calculation();
@@ -143,18 +147,55 @@ std::vector<double> linear_regression::calculate_linear_regression_coefficients(
     {
         coeficientes.push_back(coeficientes_matriz(i, 0));
     }
-    
+
     return coeficientes;
+}
+
+// Método privado para la regresión cuadrática simple
+// Los datos deben venir en el formato: {x, y}
+std::vector<double> linear_regression::calculate_quadratic_regression_coefficients()
+{
+    if (v_dataset.empty() || v_dataset[0].size() < 2) {
+        std::cerr << "Error: dataset inválido para regresión cuadrática." << std::endl;
+        return std::vector<double>();
+    }
+
+    Matrix<double> X(v_dataset.size(), 3);
+    Matrix<double> Y(v_dataset.size(), 1);
+
+    for (std::size_t i = 0; i < v_dataset.size(); ++i) {
+        double x = v_dataset[i][0];
+        X(i,0) = 1.0;
+        X(i,1) = x;
+        X(i,2) = x*x;
+        Y(i,0) = v_dataset[i][1];
+    }
+
+    Matrix<double> Xt = transpuesta(X);
+    Matrix<double> XtX = Xt * X;
+    Matrix<double> XtX_inv = inversa(XtX);
+    if (XtX_inv.nrow() == 0 && XtX_inv.ncol() == 0) {
+        std::cerr << "Error en linear_regression::calculate_quadratic_regression_coefficients(): matriz singular." << std::endl;
+        return std::vector<double>();
+    }
+
+    Matrix<double> coef_m = (XtX_inv * Xt) * Y;
+    std::vector<double> coef;
+    for (std::size_t i = 0; i < coef_m.nrow(); ++i) {
+        coef.push_back(coef_m(i,0));
+    }
+
+    return coef; // {c, b, a}
 }
 
 // Método privado para orquestar el cálculo (permite añadir otros tipos de regresión en el futuro)
 void linear_regression::perform_regression_calculation() {
     if (m_regression_type == "linear") {
         m_coefficients = calculate_linear_regression_coefficients();
-    } 
-    // else if (m_regression_type == "quadratic") {
-    //     m_coefficients = calculate_quadratic_regression_coefficients();
-    // }
+    }
+    else if (m_regression_type == "quadratic") {
+        m_coefficients = calculate_quadratic_regression_coefficients();
+    }
     else {
         std::cerr << "Error: Tipo de regresión '" << m_regression_type << "' no soportado." << std::endl;
         m_coefficients.clear(); // Asegura que los coeficientes estén vacíos en caso de tipo no válido
