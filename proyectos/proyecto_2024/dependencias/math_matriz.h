@@ -372,12 +372,12 @@ Matriz<T> gauss(const Matriz<T> & x)
     {
         T pivote = m_gauss(i, i);
         int fila_pivote_maximo = i;
-        for (int j = 0; j < m_gauss.nrow(); j+=1)
+        for (int k = i; k < m_gauss.nrow(); k+=1)
         {
-            if (abs(m_gauss(i, j)) > abs(pivote))
+            if (std::abs(m_gauss(k, i)) > std::abs(pivote))
             {
-                pivote = m_gauss(i, j);
-                fila_pivote_maximo = j;
+                pivote = m_gauss(k, i);
+                fila_pivote_maximo = k;
             }
         }
         if (fila_pivote_maximo != i)
